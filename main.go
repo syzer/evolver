@@ -5,6 +5,7 @@ import (
   "github.com/veandco/go-sdl2/sdl"
   "github.com/veandco/go-sdl2/sdl_ttf"
   "os"
+  "time"
 )
 
 var winTitle string = "Evolver"
@@ -54,11 +55,17 @@ func main() {
     os.Exit(2)
   }
 
-  m := createWorld(renderer)
-
+  w := createWorld(renderer)
+  last := time.Now()
   for running {
-    m.renderer.SetDrawColor(0, 0, 0, 255)
-    m.renderer.Clear()
+    since := time.Since(last)
+    if since > time.Millisecond*100 {
+      refresh(renderer, &w)
+      last = time.Now()
+    }
+
+    time.Sleep(time.Millisecond * 10)
+
     for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
       switch t := event.(type) {
       case *sdl.QuitEvent:
@@ -78,25 +85,20 @@ func main() {
         //   t.Timestamp, t.Type, t.Keysym.Sym, t.Keysym.Mod, t.State, t.Repeat)
       }
     }
-    m.draw()
-    drawUI(renderer)
-    surface := ubuntuR.RenderText_Solid("jeb z lasera pistoletem!!!", sdl.Color{255, 255, 0, 255})
 
-    txt, err2 := renderer.CreateTextureFromSurface(surface)
-    if err2 != nil {
-      fmt.Fprintf(os.Stderr, "Failed to create texture from surface: %s\n", err2)
-      os.Exit(2)
-    }
-    renderer.Copy(txt, nil, &sdl.Rect{0, 0, surface.W, surface.H})
-
-    renderer.Present()
-    surface.Free()
-    txt.Destroy()
   }
 
   renderer.Destroy()
   window.Destroy()
   ttf.Quit()
+}
+
+func refresh(renderer *sdl.Renderer, w *world) {
+  renderer.SetDrawColor(0, 0, 0, 255)
+  renderer.Clear()
+  w.draw()
+  drawUI(renderer)
+  renderer.Present()
 }
 
 func handleKey(code sdl.Keycode) {
@@ -106,5 +108,15 @@ func handleKey(code sdl.Keycode) {
 }
 
 func drawUI(renderer *sdl.Renderer) {
+  surface := ubuntuR.RenderText_Solid("jeb z lasera pistoletem!!!", sdl.Color{255, 255, 0, 255})
 
+  txt, err2 := renderer.CreateTextureFromSurface(surface)
+  if err2 != nil {
+    fmt.Fprintf(os.Stderr, "Failed to create texture from surface: %s\n", err2)
+    os.Exit(2)
+  }
+  renderer.Copy(txt, nil, &sdl.Rect{0, 0, surface.W, surface.H})
+
+  surface.Free()
+  txt.Destroy()
 }
