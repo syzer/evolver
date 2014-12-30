@@ -3,15 +3,39 @@ package main
 import (
   "fmt"
   "github.com/veandco/go-sdl2/sdl"
+  "github.com/veandco/go-sdl2/sdl_ttf"
   "os"
 )
 
 var winTitle string = "Evolver"
-var winWidth, winHeight int = 800, 600
+var winWidth, winHeight int = 1200, 800
 
 var running = true
 
+var ubuntuR, ubuntuB *ttf.Font
+
+func init() {
+  if ttf.Init() != 0 {
+    fmt.Fprintf(os.Stderr, "Failed to init ttf: %s\n")
+    os.Exit(1)
+  }
+
+  var err error
+
+  ubuntuR, err = ttf.OpenFont("UbuntuMono-R.ttf", 20)
+  if err != nil {
+    fmt.Fprintf(os.Stderr, "Failed to open regular font: %s\n", err)
+    os.Exit(1)
+  }
+  ubuntuB, err = ttf.OpenFont("UbuntuMono-B.ttf", 20)
+  if err != nil {
+    fmt.Fprintf(os.Stderr, "Failed to open bold font: %s\n", err)
+    os.Exit(1)
+  }
+}
+
 func main() {
+
   var window *sdl.Window
   var renderer *sdl.Renderer
   // var rect sdl.Rect
@@ -33,6 +57,8 @@ func main() {
   m := createWorld(renderer)
 
   for running {
+    m.renderer.SetDrawColor(0, 0, 0, 255)
+    m.renderer.Clear()
     for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
       switch t := event.(type) {
       case *sdl.QuitEvent:
@@ -53,14 +79,32 @@ func main() {
       }
     }
     m.draw()
+    drawUI(renderer)
+    surface := ubuntuR.RenderText_Solid("jeb z lasera pistoletem!!!", sdl.Color{255, 255, 0, 255})
+
+    txt, err2 := renderer.CreateTextureFromSurface(surface)
+    if err2 != nil {
+      fmt.Fprintf(os.Stderr, "Failed to create texture from surface: %s\n", err2)
+      os.Exit(2)
+    }
+    renderer.Copy(txt, nil, &sdl.Rect{0, 0, surface.W, surface.H})
+
+    renderer.Present()
+    surface.Free()
+    txt.Destroy()
   }
 
   renderer.Destroy()
   window.Destroy()
+  ttf.Quit()
 }
 
 func handleKey(code sdl.Keycode) {
   if code == sdl.K_ESCAPE {
     running = false
   }
+}
+
+func drawUI(renderer *sdl.Renderer) {
+
 }

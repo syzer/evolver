@@ -26,8 +26,6 @@ type pos struct {
 }
 
 func (m *world) draw() {
-  m.renderer.SetDrawColor(0, 0, 0, 255)
-  m.renderer.Clear()
 
   m.renderer.SetDrawColor(255, 255, 255, 255)
   m.renderer.DrawPoint(150, 300)
@@ -54,6 +52,4 @@ func (m *world) draw() {
   // rects = []sdl.Rect{{500, 300, 100, 100}, {200, 300, 200, 200}}
   // renderer.SetDrawColor(255, 0, 255, 255)
   // renderer.FillRects(rects)
-
-  m.renderer.Present()
 }
