@@ -81,6 +81,7 @@ func main() {
         fpsElement.value = strconv.Itoa(framesCounter)
         framesCounter = 0
       }
+      w.makeTurn()
       refresh(renderer, &w)
       last = time.Now()
     }

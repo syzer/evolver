@@ -22,8 +22,9 @@ func createWorld(renderer *sdl.Renderer) (w world) {
   for i := int64(0); i < w.sectionsCount; i++ {
     for j := int64(0); j < w.sectionsCount; j++ {
       section := section{
-        pos:    pos{i, j},
-        plants: make(map[*plant]interface{})}
+        pos:     pos{i, j},
+        plants:  make(map[*plant]interface{}),
+        animals: make(map[*animal]interface{})}
       w.sections[pos{i, j}] = &section
     }
   }
@@ -33,6 +34,11 @@ func createWorld(renderer *sdl.Renderer) (w world) {
   for i := 0; i < 1000; i++ {
     w.addRandomPlant()
   }
+
+  for i := 0; i < 1000; i++ {
+    w.addRandomAnimal()
+  }
+
   return
 }
 
@@ -47,9 +53,21 @@ func (w *world) addRandomPlant() {
   section.plants[&p] = struct{}{}
 }
 
+func (w *world) addRandomAnimal() {
+  x := rand.Int63n(w.width)
+  y := rand.Int63n(w.height)
+  section := w.sections[pos{x / w.sectionsSize, y / w.sectionsSize}]
+  a := animal{
+    pos:     pos{x: x, y: y},
+    section: section,
+  }
+  section.animals[&a] = struct{}{}
+}
+
 type section struct {
   pos
-  plants map[*plant]interface{}
+  plants  map[*plant]interface{}
+  animals map[*animal]interface{}
 }
 
 type pos struct {
@@ -61,12 +79,33 @@ type plant struct {
   section *section
 }
 
+type animal struct {
+  pos
+  section *section
+}
+
+func (m *world) makeTurn() {
+  for _, section := range m.sections {
+    // for p := range section.plants {
+    // }
+
+    for a := range section.animals {
+      a.x += 1
+    }
+  }
+}
+
 func (m *world) draw() {
 
-  m.renderer.SetDrawColor(0, 255, 0, 255)
   for _, section := range m.sections {
-    for plant := range section.plants {
-      m.renderer.DrawPoint(int(plant.x), int(plant.y))
+    m.renderer.SetDrawColor(0, 255, 0, 255)
+    for p := range section.plants {
+      m.renderer.DrawPoint(int(p.x), int(p.y))
+    }
+
+    m.renderer.SetDrawColor(255, 0, 0, 255)
+    for a := range section.animals {
+      m.renderer.DrawPoint(int(a.x), int(a.y))
     }
   }
 
