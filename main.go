@@ -5,6 +5,7 @@ import (
   "github.com/veandco/go-sdl2/sdl"
   "github.com/veandco/go-sdl2/sdl_ttf"
   "os"
+  "strconv"
   "time"
 )
 
@@ -13,7 +14,12 @@ var winWidth, winHeight int = 1200, 800
 
 var running = true
 
+var desiredFps int64 = 15
+
 var ubuntuR, ubuntuB *ttf.Font
+
+var fpsElement *uiElement
+var fpsDesiredElement *uiElement
 
 func init() {
   if ttf.Init() != 0 {
@@ -33,6 +39,10 @@ func init() {
     fmt.Fprintf(os.Stderr, "Failed to open bold font: %s\n", err)
     os.Exit(1)
   }
+
+  fpsElement = addUiElement(pos{5, 5}, "Current FPS")
+  fpsDesiredElement = addUiElement(pos{5, 25}, "Desired FPS")
+  fpsDesiredElement.value = strconv.FormatInt(desiredFps, 10)
 }
 
 func main() {
@@ -55,16 +65,30 @@ func main() {
     os.Exit(2)
   }
 
+  framesCounter := 0
+
   w := createWorld(renderer)
   last := time.Now()
+
   for running {
+
     since := time.Since(last)
-    if since > time.Millisecond*100 {
+    if since > time.Millisecond*time.Duration(1000/desiredFps) {
+      // fmt.Println("Refreshing", last)
+      framesCounter++
+      if time.Now().Unix() != last.Unix() {
+        // Update fps counter.
+        fmt.Println("times", time.Now().Unix(), last.Unix(), framesCounter)
+        fpsElement.value = strconv.Itoa(framesCounter)
+        framesCounter = 0
+      }
+
       refresh(renderer, &w)
+
       last = time.Now()
     }
 
-    time.Sleep(time.Millisecond * 10)
+    time.Sleep(time.Millisecond * 5)
 
     for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
       switch t := event.(type) {
@@ -102,21 +126,19 @@ func refresh(renderer *sdl.Renderer, w *world) {
 }
 
 func handleKey(code sdl.Keycode) {
-  if code == sdl.K_ESCAPE {
+
+  switch code {
+  case sdl.K_ESCAPE:
     running = false
+  case sdl.K_PLUS, sdl.K_EQUALS:
+    if desiredFps < 60 {
+      desiredFps++
+      fpsDesiredElement.value = strconv.FormatInt(desiredFps, 10)
+    }
+  case sdl.K_MINUS:
+    if desiredFps > 1 {
+      desiredFps--
+      fpsDesiredElement.value = strconv.FormatInt(desiredFps, 10)
+    }
   }
-}
-
-func drawUI(renderer *sdl.Renderer) {
-  surface := ubuntuR.RenderText_Solid("jeb z lasera pistoletem!!!", sdl.Color{255, 255, 0, 255})
-
-  txt, err2 := renderer.CreateTextureFromSurface(surface)
-  if err2 != nil {
-    fmt.Fprintf(os.Stderr, "Failed to create texture from surface: %s\n", err2)
-    os.Exit(2)
-  }
-  renderer.Copy(txt, nil, &sdl.Rect{0, 0, surface.W, surface.H})
-
-  surface.Free()
-  txt.Destroy()
 }
