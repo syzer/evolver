@@ -78,17 +78,14 @@ func main() {
       framesCounter++
       if time.Now().Unix() != last.Unix() {
         // Update fps counter.
-        fmt.Println("times", time.Now().Unix(), last.Unix(), framesCounter)
         fpsElement.value = strconv.Itoa(framesCounter)
         framesCounter = 0
       }
-
       refresh(renderer, &w)
-
       last = time.Now()
     }
 
-    time.Sleep(time.Millisecond * 5)
+    time.Sleep(time.Millisecond * 3)
 
     for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
       switch t := event.(type) {

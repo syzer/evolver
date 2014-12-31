@@ -25,7 +25,7 @@ func drawUI(renderer *sdl.Renderer) {
       fmt.Fprintf(os.Stderr, "Failed to create texture from surface: %s\n", err2)
       os.Exit(2)
     }
-    renderer.Copy(txt, nil, &sdl.Rect{k.x, k.y, surface.W, surface.H})
+    renderer.Copy(txt, nil, &sdl.Rect{int32(k.x), int32(k.y), surface.W, surface.H})
 
     surface.Free()
     txt.Destroy()
