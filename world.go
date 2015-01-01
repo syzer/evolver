@@ -1,11 +1,14 @@
 package main
 
 import (
-  // "fmt"
+  "fmt"
   "github.com/veandco/go-sdl2/sdl"
   "math/rand"
+  "sync"
   // "os"
 )
+
+var routines int = 4
 
 type world struct {
   sections      map[pos]*section
@@ -60,6 +63,7 @@ func (w *world) addRandomAnimal() {
   a := animal{
     pos:     pos{x: x, y: y},
     section: section,
+    dMove:   nil,
   }
   section.animals[&a] = struct{}{}
 }
@@ -82,17 +86,41 @@ type plant struct {
 type animal struct {
   pos
   section *section
+  // decisions
+  dMove *pos
 }
 
-func (m *world) makeTurn() {
-  for _, section := range m.sections {
+func (w *world) makeTurn() {
+  var wg sync.WaitGroup
+  wg.Add(routines)
+  for i := 0; i < routines; i++ {
+    go w.makeDecision(i, &wg)
+  }
+  wg.Wait()
+  for _, section := range w.sections {
     // for p := range section.plants {
     // }
 
     for a := range section.animals {
-      a.x += 1
+      a.x += a.dMove.x
+      a.y += a.dMove.y
+      a.dMove = &pos{x: 1, y: 0}
     }
   }
+}
+
+func (w *world) makeDecision(num int, wg *sync.WaitGroup) {
+  for _, section := range w.sections {
+    // for p := range section.plants {
+    // }
+    if int(section.y)%routines != num {
+      continue
+    }
+    for a := range section.animals {
+      a.dMove = &pos{x: 1, y: 0}
+    }
+  }
+  wg.Done()
 }
 
 func (m *world) draw() {
