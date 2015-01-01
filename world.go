@@ -1,44 +1,46 @@
 package main
 
 import (
-  "fmt"
+  // "fmt"
   "github.com/veandco/go-sdl2/sdl"
+  "math"
   "math/rand"
   "sync"
   // "os"
 )
 
 var routines int = 4
+var currentId int64 = 0
 
 type world struct {
-  sections      map[pos]*section
+  sections      map[posInt]*section
   renderer      *sdl.Renderer
   height, width int64
-  sectionsSize  int64
-  sectionsCount int64
+  sectionsSize  int32
+  sectionsCount int32
 }
 
 func createWorld(renderer *sdl.Renderer) (w world) {
-  w.sections = make(map[pos]*section)
-  w.sectionsCount = 20
+  w.sections = make(map[posInt]*section)
+  w.sectionsCount = 7
   w.sectionsSize = 100
-  for i := int64(0); i < w.sectionsCount; i++ {
-    for j := int64(0); j < w.sectionsCount; j++ {
+  for i := int32(0); i < w.sectionsCount; i++ {
+    for j := int32(0); j < w.sectionsCount; j++ {
       section := section{
-        pos:     pos{i, j},
+        posInt:  posInt{i, j},
         plants:  make(map[*plant]interface{}),
         animals: make(map[*animal]interface{})}
-      w.sections[pos{i, j}] = &section
+      w.sections[posInt{i, j}] = &section
     }
   }
   w.renderer = renderer
-  w.height = w.sectionsCount * w.sectionsSize
-  w.width = w.sectionsCount * w.sectionsSize
-  for i := 0; i < 1000; i++ {
+  w.height = int64(w.sectionsCount) * int64(w.sectionsSize)
+  w.width = int64(w.sectionsCount) * int64(w.sectionsSize)
+  for i := 0; i < 10000; i++ {
     w.addRandomPlant()
   }
 
-  for i := 0; i < 1000; i++ {
+  for i := 0; i < 20; i++ {
     w.addRandomAnimal()
   }
 
@@ -46,9 +48,10 @@ func createWorld(renderer *sdl.Renderer) (w world) {
 }
 
 func (w *world) addRandomPlant() {
-  x := rand.Int63n(w.width)
-  y := rand.Int63n(w.height)
-  section := w.sections[pos{x / w.sectionsSize, y / w.sectionsSize}]
+  x := float64(rand.Int63n(w.width))
+  y := float64(rand.Int63n(w.height))
+  secPos := posInt{int32(math.Floor(x / float64(w.sectionsSize))), int32(math.Floor(y / float64(w.sectionsSize)))}
+  section := w.sections[secPos]
   p := plant{
     pos:     pos{x: x, y: y},
     section: section,
@@ -57,25 +60,32 @@ func (w *world) addRandomPlant() {
 }
 
 func (w *world) addRandomAnimal() {
-  x := rand.Int63n(w.width)
-  y := rand.Int63n(w.height)
-  section := w.sections[pos{x / w.sectionsSize, y / w.sectionsSize}]
+  x := float64(rand.Int63n(w.width))
+  y := float64(rand.Int63n(w.height))
+  secPos := posInt{int32(math.Floor(x / float64(w.sectionsSize))), int32(math.Floor(y / float64(w.sectionsSize)))}
+  section := w.sections[secPos]
   a := animal{
     pos:     pos{x: x, y: y},
     section: section,
     dMove:   nil,
+    id:      currentId,
   }
+  currentId++
   section.animals[&a] = struct{}{}
 }
 
 type section struct {
-  pos
+  posInt
   plants  map[*plant]interface{}
   animals map[*animal]interface{}
 }
 
+type posInt struct {
+  x, y int32
+}
+
 type pos struct {
-  x, y int64
+  x, y float64
 }
 
 type plant struct {
@@ -87,7 +97,9 @@ type animal struct {
   pos
   section *section
   // decisions
-  dMove *pos
+  dMove     *pos
+  dEatPlant *plant
+  id        int64
 }
 
 func (w *world) makeTurn() {
@@ -102,25 +114,83 @@ func (w *world) makeTurn() {
     // }
 
     for a := range section.animals {
-      a.x += a.dMove.x
-      a.y += a.dMove.y
-      a.dMove = &pos{x: 1, y: 0}
+      if a.dMove != nil {
+        a.x += a.dMove.x
+        a.y += a.dMove.y
+        // get new section
+        secPos := posInt{int32(math.Floor(a.x / float64(w.sectionsSize))), int32(math.Floor(a.y / float64(w.sectionsSize)))}
+        if secPos != a.section.posInt {
+          // fmt.Println("Moving from", a.section.posInt, secPos, a.id)
+          delete(a.section.animals, a)
+          w.sections[secPos].animals[a] = struct{}{}
+          a.section = w.sections[secPos]
+        }
+      }
+      if a.dEatPlant != nil {
+        plant := a.dEatPlant
+        if plant.section != nil {
+          delete(plant.section.plants, plant)
+          // plant.section.plants[plant] = nil
+          plant.section = nil
+        }
+      }
+
     }
   }
 }
 
 func (w *world) makeDecision(num int, wg *sync.WaitGroup) {
   for _, section := range w.sections {
-    // for p := range section.plants {
-    // }
     if int(section.y)%routines != num {
+      // another thread will take care of this.
       continue
     }
     for a := range section.animals {
-      a.dMove = &pos{x: 1, y: 0}
+      w.animalAi(a)
     }
   }
   wg.Done()
+}
+
+var sightRange float64 = 50
+var speed float64 = 1.5
+
+func (w *world) animalAi(a *animal) {
+  // watch out, is there some food around?
+  a.dMove = nil
+  a.dEatPlant = nil
+  var closestPlant *plant = nil
+  var plantDist = sightRange
+  for i := a.section.x - 1; i <= a.section.x+1; i++ {
+    for j := a.section.y - 1; j <= a.section.y+1; j++ {
+      s := w.sections[posInt{i, j}]
+      if s != nil {
+
+        for p := range s.plants {
+          if p.distance(&a.pos) <= plantDist {
+            plantDist = p.distance(&a.pos)
+            closestPlant = p
+          }
+        }
+      }
+    }
+
+  }
+  if closestPlant != nil {
+    var xChange, yChange float64
+    if speed >= plantDist {
+      xChange = (closestPlant.x - a.x)
+      yChange = (closestPlant.y - a.y)
+      a.dEatPlant = closestPlant
+    } else {
+      xChange = (closestPlant.x - a.x) * (speed / plantDist)
+      yChange = (closestPlant.y - a.y) * (speed / plantDist)
+    }
+    a.dMove = &pos{xChange, yChange}
+
+  } else {
+    // fmt.Println("No more food...", a.id)
+  }
 }
 
 func (m *world) draw() {
@@ -159,4 +229,8 @@ func (m *world) draw() {
   // rects = []sdl.Rect{{500, 300, 100, 100}, {200, 300, 200, 200}}
   // renderer.SetDrawColor(255, 0, 255, 255)
   // renderer.FillRects(rects)
+}
+
+func (p1 *pos) distance(p2 *pos) float64 {
+  return math.Sqrt((p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y))
 }

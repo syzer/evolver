@@ -10,11 +10,11 @@ import (
 )
 
 var winTitle string = "Evolver"
-var winWidth, winHeight int = 1200, 800
+var winWidth, winHeight int = 800, 800
 
 var running = true
 
-var desiredFps int64 = 15
+var desiredFps int64 = 30
 
 var ubuntuR, ubuntuB *ttf.Font
 
@@ -59,7 +59,7 @@ func main() {
     os.Exit(1)
   }
 
-  renderer, err = sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
+  renderer, err = sdl.CreateRenderer(window, -1, sdl.RENDERER_SOFTWARE)
   if err != nil {
     fmt.Fprintf(os.Stderr, "Failed to create renderer: %s\n", err)
     os.Exit(2)
@@ -81,12 +81,13 @@ func main() {
         fpsElement.value = strconv.Itoa(framesCounter)
         framesCounter = 0
       }
+      last = time.Now()
+      w.makeTurn()
       w.makeTurn()
       refresh(renderer, &w)
-      last = time.Now()
-    }
 
-    time.Sleep(time.Millisecond * 3)
+    }
+    time.Sleep(time.Millisecond * 10)
 
     for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
       switch t := event.(type) {
@@ -116,10 +117,12 @@ func main() {
 }
 
 func refresh(renderer *sdl.Renderer, w *world) {
+  // renderer.SetDrawColor(0, 0, uint8(frameId%255), 255)
   renderer.SetDrawColor(0, 0, 0, 255)
   renderer.Clear()
   w.draw()
   drawUI(renderer)
+
   renderer.Present()
 }
 
