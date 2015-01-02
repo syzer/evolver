@@ -40,11 +40,11 @@ func createWorld(renderer *sdl.Renderer) (w world) {
   w.renderer = renderer
   w.height = int64(w.sectionsCount) * int64(w.sectionsSize)
   w.width = int64(w.sectionsCount) * int64(w.sectionsSize)
-  for i := 0; i < 2000; i++ {
+  for i := 0; i < 1000; i++ {
     w.addRandomPlant()
   }
 
-  for i := 0; i < 20; i++ {
+  for i := 0; i < 30; i++ {
     w.addRandomAnimal()
   }
 
@@ -83,7 +83,7 @@ func (w *world) addRandomAnimal() {
     id:            currentId,
     isCarnivourus: rand.Int31n(2) == 0,
     age:           0,
-    food:          100,
+    food:          300,
     dead:          false,
     birth:         false,
     wandering:     nil,
@@ -201,18 +201,32 @@ func (w *world) makeTurn() {
 
   for _, section := range w.sections {
     // Chance to grow new plant depends on number of plants
-    plantsCount := len(section.plants)
+    plantsCount := 0
+    sectionsCount := 0
+    for i := section.x - 1; i <= section.x+1; i++ {
+      for j := section.y - 1; j <= section.y+1; j++ {
+        s := w.sections[posInt{i, j}]
+        if s != nil {
+          plantsCount += len(s.plants)
+          sectionsCount++
+        }
+      }
+
+    }
+    plantsCount = plantsCount / sectionsCount
+
     for p := range section.plants {
       if rand.Int31n(100) == 0 {
-        if float64(rand.Int31n(10)) > math.Sqrt(float64(plantsCount)) {
+        if float64(rand.Int31n(4)) >= math.Pow(float64(plantsCount), 0.3) {
           w.addPlant(p.x-float64(rand.Int31n(50)-25), p.y-float64(rand.Int31n(50)-25))
         }
       }
-      if p.age > 2000&rand.Int31n(100) {
+      if p.age > 1000 && rand.Int31n(1000) == 0 {
         delete(p.section.plants, p)
         p.section = nil
+      } else {
+        p.age++
       }
-
     }
 
     for a := range section.animals {
@@ -258,13 +272,19 @@ func (w *world) makeDecision(num int, wg *sync.WaitGroup) {
   wg.Done()
 }
 
-var sightRange float64 = 50
+var sightRange float64 = 30
 var speedBase float64 = 1.5
 
 func (w *world) animalAi(a *animal) {
   // watch out, is there some food around?
   a.dMove = nil
   a.dEatPlant = nil
+
+  if a.food > 2000 {
+    a.wandering = nil
+    return
+  }
+
   var closestPlant *plant = nil
   var plantDist = sightRange
   for i := a.section.x - 1; i <= a.section.x+1; i++ {
@@ -273,7 +293,7 @@ func (w *world) animalAi(a *animal) {
       if s != nil {
 
         for p := range s.plants {
-          if p.distance(&a.pos) <= plantDist {
+          if p.age > 100 && p.distance(&a.pos) <= plantDist {
             plantDist = p.distance(&a.pos)
             closestPlant = p
           }
@@ -285,7 +305,7 @@ func (w *world) animalAi(a *animal) {
   var speed float64
   if a.age < 50 {
     speed = 0.1 * speedBase
-  } else if a.age > 10000 {
+  } else if a.age > 2000 {
     speed = 0.5 * speedBase
   } else {
     speed = speedBase
