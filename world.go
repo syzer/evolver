@@ -184,12 +184,13 @@ func (w *world) makeTurn() {
         }
       }
       a.age++
-      if a.age%500 == 0 {
+      if a.age > 500 && rand.Int31n(200) == 0 && a.food > 1200 {
         a.birth = true
+        a.food -= 400
       } else {
         a.birth = false
       }
-      if a.food == 0 || a.age == 6000 {
+      if a.food == 0 || (a.age > 2000 && rand.Int31n(3000) == 0) {
         a.dead = true
       } else {
         a.food--
