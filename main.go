@@ -10,7 +10,7 @@ import (
 )
 
 var winTitle string = "Evolver"
-var winWidth, winHeight int = 800, 800
+var winWidth, winHeight int = 1200, 800
 
 var running = true
 
@@ -20,6 +20,9 @@ var ubuntuR, ubuntuB *ttf.Font
 
 var fpsElement *uiElement
 var fpsDesiredElement *uiElement
+var turnElement *uiElement
+var herbivouresElement *uiElement
+var carnivouresElement *uiElement
 
 func init() {
   if ttf.Init() != 0 {
@@ -43,6 +46,11 @@ func init() {
   fpsElement = addUiElement(pos{5, 5}, "Current FPS")
   fpsDesiredElement = addUiElement(pos{5, 25}, "Desired FPS")
   fpsDesiredElement.value = strconv.FormatInt(desiredFps, 10)
+
+  turnElement = addUiElement(pos{5, 45}, "Turn number")
+
+  carnivouresElement = addUiElement(pos{5, 65}, "Carnivoures")
+  herbivouresElement = addUiElement(pos{5, 85}, "Herbivoures")
 }
 
 func main() {
@@ -84,6 +92,9 @@ func main() {
       last = time.Now()
       w.makeTurn()
       w.makeTurn()
+      turnElement.value = strconv.FormatInt(int64(w.turnNumber), 10)
+      herbivouresElement.value = strconv.FormatInt(int64(w.herbivoresCount), 10)
+      carnivouresElement.value = strconv.FormatInt(int64(w.carnivouresCount), 10)
       refresh(renderer, &w)
 
     }
