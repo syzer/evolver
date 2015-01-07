@@ -92,6 +92,9 @@ func main() {
       last = time.Now()
       w.makeTurn()
       w.makeTurn()
+
+      // w.makeTurn()
+      // w.makeTurn()
       turnElement.value = strconv.FormatInt(int64(w.turnNumber), 10)
       herbivouresElement.value = strconv.FormatInt(int64(w.herbivoresCount), 10)
       carnivouresElement.value = strconv.FormatInt(int64(w.carnivouresCount), 10)
