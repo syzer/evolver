@@ -25,7 +25,7 @@ type world struct {
 
 func createWorld(renderer *sdl.Renderer) (w world) {
   w.sections = make(map[posInt]*section)
-  w.sectionsCount = 25
+  w.sectionsCount = 50
   w.sectionsSize = 50
   w.turnNumber = 0
   for i := int32(0); i < w.sectionsCount; i++ {
@@ -40,11 +40,11 @@ func createWorld(renderer *sdl.Renderer) (w world) {
   w.renderer = renderer
   w.height = int64(w.sectionsCount) * int64(w.sectionsSize)
   w.width = int64(w.sectionsCount) * int64(w.sectionsSize)
-  for i := 0; i < 5000; i++ {
+  for i := 0; i < 10000; i++ {
     w.addRandomPlant()
   }
 
-  for i := 0; i < 40; i++ {
+  for i := 0; i < 100; i++ {
     w.addRandomAnimal()
   }
 
@@ -410,21 +410,27 @@ func (w *world) wander(a *animal, speed float64) {
   }
 }
 
-func (m *world) draw() {
+func (w *world) draw(pos pos, size pos) {
 
-  for _, section := range m.sections {
-    m.renderer.SetDrawColor(0, 255, 0, 255)
+  for _, section := range w.sections {
+    if float64((section.x+1)*w.sectionsSize) < pos.x || float64((section.x)*w.sectionsSize) > pos.x+size.x {
+      continue
+    }
+    if float64((section.y+1)*w.sectionsSize) < pos.y || float64((section.y)*w.sectionsSize) > pos.y+size.y {
+      continue
+    }
+    w.renderer.SetDrawColor(0, 255, 0, 255)
     for p := range section.plants {
-      m.renderer.DrawPoint(int(p.x), int(p.y))
+      w.renderer.DrawPoint(int(p.x-pos.x), int(p.y-pos.y))
     }
 
     for a := range section.animals {
       if a.isCarnivourus {
-        m.renderer.SetDrawColor(255, 0, 0, 255)
+        w.renderer.SetDrawColor(255, 0, 0, 255)
       } else {
-        m.renderer.SetDrawColor(0, 0, 255, 255)
+        w.renderer.SetDrawColor(0, 0, 255, 255)
       }
-      m.renderer.DrawPoint(int(a.x), int(a.y))
+      w.renderer.DrawPoint(int(a.x-pos.x), int(a.y-pos.y))
     }
   }
 
