@@ -28,7 +28,7 @@ var carnivouresElement *uiElement
 var windowSize pos
 
 func init() {
-  if ttf.Init() != 0 {
+  if ttf.Init() != nil {
     fmt.Fprintf(os.Stderr, "Failed to init ttf: %s\n")
     os.Exit(1)
   }

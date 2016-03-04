@@ -18,7 +18,7 @@ type uiElement struct {
 
 func drawUI(renderer *sdl.Renderer) {
   for k := range elements {
-    surface := ubuntuR.RenderText_Solid(k.text+": "+k.value, sdl.Color{255, 255, 0, 255})
+    surface, _ := ubuntuR.RenderUTF8_Solid(k.text+": "+k.value, sdl.Color{255, 255, 0, 255})
 
     txt, err2 := renderer.CreateTextureFromSurface(surface)
     if err2 != nil {
