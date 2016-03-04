@@ -25,7 +25,7 @@ type world struct {
 
 func createWorld(renderer *sdl.Renderer) (w world) {
   w.sections = make(map[posInt]*section)
-  w.sectionsCount = 25
+  w.sectionsCount = 50
   w.sectionsSize = 50
   w.turnNumber = 0
   for i := int32(0); i < w.sectionsCount; i++ {
@@ -40,11 +40,11 @@ func createWorld(renderer *sdl.Renderer) (w world) {
   w.renderer = renderer
   w.height = int64(w.sectionsCount) * int64(w.sectionsSize)
   w.width = int64(w.sectionsCount) * int64(w.sectionsSize)
-  for i := 0; i < 1000; i++ {
+  for i := 0; i < 10000; i++ {
     w.addRandomPlant()
   }
 
-  for i := 0; i < 30; i++ {
+  for i := 0; i < 100; i++ {
     w.addRandomAnimal()
   }
 
@@ -79,14 +79,9 @@ func (w *world) addRandomAnimal() {
   a := animal{
     pos:           pos{x: x, y: y},
     section:       section,
-    dMove:         nil,
     id:            currentId,
     isCarnivourus: rand.Int31n(2) == 0,
-    age:           0,
     food:          300,
-    dead:          false,
-    birth:         false,
-    wandering:     nil,
   }
   currentId++
   section.animals[&a] = struct{}{}
@@ -101,14 +96,9 @@ func (w *world) birth(a *animal) {
   child := animal{
     pos:           pos{x: a.x, y: a.y},
     section:       a.section,
-    dMove:         nil,
     id:            currentId,
     isCarnivourus: a.isCarnivourus,
-    age:           0,
-    food:          100,
-    dead:          false,
-    birth:         false,
-    wandering:     nil,
+    food:          200,
   }
   currentId++
   a.section.animals[&child] = struct{}{}
@@ -136,6 +126,8 @@ type pos struct {
 type plant struct {
   pos
   section *section
+  birth   bool
+  dead    bool
   age     int32
 }
 
@@ -151,20 +143,30 @@ type animal struct {
   // decisions
   dMove     *pos
   dEatPlant *plant
-
+  dAttack   *animal
   // ai
   wandering *pos
 }
 
 func (w *world) makeTurn() {
   w.turnNumber++
+  w.decisionsPhase()
+  // change world after the turn. Grow plants.
+  w.executionPhase()
+  w.mapModifyPhase()
 
+}
+
+func (w *world) decisionsPhase() {
   var wg sync.WaitGroup
   wg.Add(routines)
   for i := 0; i < routines; i++ {
     go w.makeDecision(i, &wg)
   }
   wg.Wait()
+}
+
+func (w *world) executionPhase() {
   for _, section := range w.sections {
     // for p := range section.plants {
     // }
@@ -176,56 +178,43 @@ func (w *world) makeTurn() {
       }
       if a.dEatPlant != nil {
         plant := a.dEatPlant
-        if plant.section != nil {
-          delete(plant.section.plants, plant)
-          // plant.section.plants[plant] = nil
-          plant.section = nil
+        if !plant.dead {
+          plant.dead = true
           a.food += 100
         }
       }
+      if a.dAttack != nil && !a.dAttack.dead {
+        a.dAttack.dead = true
+        a.food += 1500
+      }
       a.age++
-      if a.age > 500 && rand.Int31n(200) == 0 && a.food > 1200 {
+      if a.age > 500 && rand.Int31n(300) == 0 && a.food > 1200 {
         a.birth = true
         a.food -= 400
       } else {
         a.birth = false
       }
-      if a.food == 0 || (a.age > 2000 && rand.Int31n(3000) == 0) {
+      if a.food == 0 || (a.age > 4000 && rand.Int31n(3000) == 0) {
         a.dead = true
       } else {
         a.food--
       }
     }
   }
-  // change world after the turn. Grow plants.
 
+}
+
+func (w *world) mapModifyPhase() {
   for _, section := range w.sections {
     // Chance to grow new plant depends on number of plants
-    plantsCount := 0
-    sectionsCount := 0
-    for i := section.x - 1; i <= section.x+1; i++ {
-      for j := section.y - 1; j <= section.y+1; j++ {
-        s := w.sections[posInt{i, j}]
-        if s != nil {
-          plantsCount += len(s.plants)
-          sectionsCount++
-        }
-      }
-
-    }
-    plantsCount = plantsCount / sectionsCount
 
     for p := range section.plants {
-      if rand.Int31n(100) == 0 {
-        if float64(rand.Int31n(4)) >= math.Pow(float64(plantsCount), 0.3) {
+      if p.dead {
+        delete(section.plants, p)
+      } else {
+        if p.birth {
           w.addPlant(p.x-float64(rand.Int31n(50)-25), p.y-float64(rand.Int31n(50)-25))
         }
-      }
-      if p.age > 1000 && rand.Int31n(1000) == 0 {
-        delete(p.section.plants, p)
-        p.section = nil
-      } else {
-        p.age++
       }
     }
 
@@ -256,7 +245,6 @@ func (w *world) makeTurn() {
       }
     }
   }
-
 }
 
 func (w *world) makeDecision(num int, wg *sync.WaitGroup) {
@@ -268,102 +256,181 @@ func (w *world) makeDecision(num int, wg *sync.WaitGroup) {
     for a := range section.animals {
       w.animalAi(a)
     }
+    for p := range section.plants {
+      p.birth = false
+      if rand.Int31n(80) == 0 {
+        plantsCount := int32(0)
+        for i := section.x - 1; i <= section.x+1; i++ {
+          for j := section.y - 1; j <= section.y+1; j++ {
+            s := w.sections[posInt{i, j}]
+            if s == nil {
+              continue
+            }
+            for otherPlant := range s.plants {
+              if otherPlant.distance(&p.pos) < 40 {
+                plantsCount++
+              }
+            }
+          }
+
+        }
+
+        if plantsCount < 150 && rand.Int31n(plantsCount*plantsCount/10+1) == 0 {
+          p.birth = true
+        }
+      }
+      if p.age > 1500 && rand.Int31n(1500) == 0 {
+        p.dead = true
+      } else {
+        p.age++
+      }
+
+    }
   }
   wg.Done()
 }
 
-var sightRange float64 = 30
-var speedBase float64 = 1.5
+var sightRange float64 = 24
+var speedBase float64 = 1
 
 func (w *world) animalAi(a *animal) {
   // watch out, is there some food around?
   a.dMove = nil
   a.dEatPlant = nil
+  a.dAttack = nil
 
   if a.food > 2000 {
-    a.wandering = nil
+    a.wandering = nil // just sleep
     return
   }
 
-  var closestPlant *plant = nil
-  var plantDist = sightRange
-  for i := a.section.x - 1; i <= a.section.x+1; i++ {
-    for j := a.section.y - 1; j <= a.section.y+1; j++ {
-      s := w.sections[posInt{i, j}]
-      if s != nil {
-
-        for p := range s.plants {
-          if p.age > 100 && p.distance(&a.pos) <= plantDist {
-            plantDist = p.distance(&a.pos)
-            closestPlant = p
-          }
-        }
-      }
-    }
-
-  }
   var speed float64
-  if a.age < 50 {
-    speed = 0.1 * speedBase
-  } else if a.age > 2000 {
+  if a.age < 500 {
+    speed = 0.75 * speedBase
+  } else if a.age > 4000 {
     speed = 0.5 * speedBase
   } else {
     speed = speedBase
   }
 
-  if closestPlant != nil {
-    a.wandering = nil
-    var xChange, yChange float64
-    if speed >= plantDist {
-      xChange = (closestPlant.x - a.x)
-      yChange = (closestPlant.y - a.y)
-      a.dEatPlant = closestPlant
-    } else {
-      xChange = (closestPlant.x - a.x) * (speed / plantDist)
-      yChange = (closestPlant.y - a.y) * (speed / plantDist)
-    }
-    a.dMove = &pos{xChange, yChange}
-
-  } else {
-    if a.wandering == nil {
-      wanderingX := a.x - float64(rand.Int31n(100)-50)
-      wanderingY := a.y - float64(rand.Int31n(100)-50)
-      secPos := posInt{int32(math.Floor(wanderingX / float64(w.sectionsSize))), int32(math.Floor(wanderingY / float64(w.sectionsSize)))}
-      if w.sections[secPos] != nil {
-        a.wandering = &pos{wanderingX, wanderingY}
+  if a.isCarnivourus {
+    speed *= 1.5
+    var closestVictim *animal = nil
+    var victimDist = sightRange * 1.5
+    for i := a.section.x - 1; i <= a.section.x+1; i++ {
+      for j := a.section.y - 1; j <= a.section.y+1; j++ {
+        s := w.sections[posInt{i, j}]
+        if s != nil {
+          for victim := range s.animals {
+            if !victim.isCarnivourus && victim.distance(&a.pos) <= victimDist {
+              victimDist = victim.distance(&a.pos)
+              closestVictim = victim
+            }
+          }
+        }
       }
 
-    } else {
-      wandDist := a.wandering.distance(&a.pos)
+    }
+
+    if closestVictim != nil {
+      a.wandering = nil
       var xChange, yChange float64
-      if speed >= wandDist {
-        a.wandering = nil
+      if speed >= victimDist {
+        xChange = (closestVictim.x - a.x)
+        yChange = (closestVictim.y - a.y)
+        a.dAttack = closestVictim
       } else {
-        xChange = (a.wandering.x - a.x) * (speed / wandDist)
-        yChange = (a.wandering.y - a.y) * (speed / wandDist)
+        xChange = (closestVictim.x - a.x) * (speed / victimDist)
+        yChange = (closestVictim.y - a.y) * (speed / victimDist)
       }
       a.dMove = &pos{xChange, yChange}
 
+    } else {
+      w.wander(a, speed)
     }
+  } else {
+    var closestPlant *plant = nil
+    var plantDist = sightRange
+    for i := a.section.x - 1; i <= a.section.x+1; i++ {
+      for j := a.section.y - 1; j <= a.section.y+1; j++ {
+        s := w.sections[posInt{i, j}]
+        if s != nil {
+
+          for p := range s.plants {
+            if p.age > 100 && p.distance(&a.pos) <= plantDist {
+              plantDist = p.distance(&a.pos)
+              closestPlant = p
+            }
+          }
+        }
+      }
+
+    }
+
+    if closestPlant != nil {
+      a.wandering = nil
+      var xChange, yChange float64
+      if speed >= plantDist {
+        xChange = (closestPlant.x - a.x)
+        yChange = (closestPlant.y - a.y)
+        a.dEatPlant = closestPlant
+      } else {
+        xChange = (closestPlant.x - a.x) * (speed / plantDist)
+        yChange = (closestPlant.y - a.y) * (speed / plantDist)
+      }
+      a.dMove = &pos{xChange, yChange}
+
+    } else {
+      w.wander(a, speed)
+    }
+  }
+
+}
+
+func (w *world) wander(a *animal, speed float64) {
+  if a.wandering == nil {
+    wanderingX := a.x - float64(rand.Int31n(100)-50)
+    wanderingY := a.y - float64(rand.Int31n(100)-50)
+    secPos := posInt{int32(math.Floor(wanderingX / float64(w.sectionsSize))), int32(math.Floor(wanderingY / float64(w.sectionsSize)))}
+    if w.sections[secPos] != nil {
+      a.wandering = &pos{wanderingX, wanderingY}
+    }
+
+  } else {
+    wandDist := a.wandering.distance(&a.pos)
+    var xChange, yChange float64
+    if speed >= wandDist {
+      a.wandering = nil
+    } else {
+      xChange = (a.wandering.x - a.x) * (speed / wandDist)
+      yChange = (a.wandering.y - a.y) * (speed / wandDist)
+    }
+    a.dMove = &pos{xChange, yChange}
 
   }
 }
 
-func (m *world) draw() {
+func (w *world) draw(pos pos, size pos) {
 
-  for _, section := range m.sections {
-    m.renderer.SetDrawColor(0, 255, 0, 255)
+  for _, section := range w.sections {
+    if float64((section.x+1)*w.sectionsSize) < pos.x || float64((section.x)*w.sectionsSize) > pos.x+size.x {
+      continue
+    }
+    if float64((section.y+1)*w.sectionsSize) < pos.y || float64((section.y)*w.sectionsSize) > pos.y+size.y {
+      continue
+    }
+    w.renderer.SetDrawColor(0, 255, 0, 255)
     for p := range section.plants {
-      m.renderer.DrawPoint(int(p.x), int(p.y))
+      w.renderer.DrawPoint(int(p.x-pos.x), int(p.y-pos.y))
     }
 
     for a := range section.animals {
       if a.isCarnivourus {
-        m.renderer.SetDrawColor(255, 0, 0, 255)
+        w.renderer.SetDrawColor(255, 0, 0, 255)
       } else {
-        m.renderer.SetDrawColor(0, 0, 255, 255)
+        w.renderer.SetDrawColor(0, 0, 255, 255)
       }
-      m.renderer.DrawPoint(int(a.x), int(a.y))
+      w.renderer.DrawPoint(int(a.x-pos.x), int(a.y-pos.y))
     }
   }
 

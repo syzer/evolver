@@ -12,6 +12,8 @@ import (
 var winTitle string = "Evolver"
 var winWidth, winHeight int = 1200, 800
 
+var screenPos = pos{0, 0}
+
 var running = true
 
 var desiredFps int64 = 30
@@ -23,9 +25,10 @@ var fpsDesiredElement *uiElement
 var turnElement *uiElement
 var herbivouresElement *uiElement
 var carnivouresElement *uiElement
+var windowSize pos
 
 func init() {
-  if ttf.Init() != 0 {
+  if ttf.Init() != nil {
     fmt.Fprintf(os.Stderr, "Failed to init ttf: %s\n")
     os.Exit(1)
   }
@@ -62,6 +65,9 @@ func main() {
 
   window, err := sdl.CreateWindow(winTitle, sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
     winWidth, winHeight, sdl.WINDOW_SHOWN)
+  width, height := window.GetSize()
+  windowSize.x = float64(width)
+  windowSize.y = float64(height)
   if err != nil {
     fmt.Fprintf(os.Stderr, "Failed to create window: %s\n", err)
     os.Exit(1)
@@ -92,6 +98,9 @@ func main() {
       last = time.Now()
       w.makeTurn()
       w.makeTurn()
+
+      // w.makeTurn()
+      // w.makeTurn()
       turnElement.value = strconv.FormatInt(int64(w.turnNumber), 10)
       herbivouresElement.value = strconv.FormatInt(int64(w.herbivoresCount), 10)
       carnivouresElement.value = strconv.FormatInt(int64(w.carnivouresCount), 10)
@@ -114,10 +123,13 @@ func main() {
         // fmt.Printf("[%d ms] MouseWheel\ttype:%d\tid:%d\tx:%d\ty:%d\n",
         //   t.Timestamp, t.Type, t.Which, t.X, t.Y)
       case *sdl.KeyUpEvent:
-        handleKey(t.Keysym.Sym)
-        // fmt.Printf("[%d ms] Keyboard\ttype:%d\tsym:%c\tmodifiers:%d\tstate:%d\trepeat:%d\n",
-        //   t.Timestamp, t.Type, t.Keysym.Sym, t.Keysym.Mod, t.State, t.Repeat)
+        if t.Keysym.Sym == sdl.K_ESCAPE {
+          running = false
+        }
+      case *sdl.KeyDownEvent:
+        handleKey(t.Keysym.Sym, &w)
       }
+
     }
 
   }
@@ -131,13 +143,14 @@ func refresh(renderer *sdl.Renderer, w *world) {
   // renderer.SetDrawColor(0, 0, uint8(frameId%255), 255)
   renderer.SetDrawColor(0, 0, 0, 255)
   renderer.Clear()
-  w.draw()
+
+  w.draw(screenPos, windowSize)
   drawUI(renderer)
 
   renderer.Present()
 }
 
-func handleKey(code sdl.Keycode) {
+func handleKey(code sdl.Keycode, w *world) {
 
   switch code {
   case sdl.K_ESCAPE:
@@ -151,6 +164,29 @@ func handleKey(code sdl.Keycode) {
     if desiredFps > 1 {
       desiredFps--
       fpsDesiredElement.value = strconv.FormatInt(desiredFps, 10)
+    }
+
+  case sdl.K_LEFT:
+    screenPos.x -= 25
+    if screenPos.x < 0 {
+      screenPos.x = 0
+    }
+  case sdl.K_RIGHT:
+    screenPos.x += 25
+    if screenPos.x > float64(w.width)-windowSize.x {
+      screenPos.x = float64(w.width) - windowSize.x
+    }
+
+  case sdl.K_UP:
+    screenPos.y -= 50
+    if screenPos.y < 0 {
+      screenPos.y = 0
+    }
+
+  case sdl.K_DOWN:
+    screenPos.y += 50
+    if screenPos.y > float64(w.height)-windowSize.y {
+      screenPos.y = float64(w.height) - windowSize.y
     }
   }
 }
