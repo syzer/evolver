@@ -101,6 +101,7 @@ func main() {
       }
       last = time.Now()
       w.makeTurn()
+      w.makeTurn()
 
       refresh(renderer, &w)
 
@@ -146,7 +147,7 @@ func addSubtypeUi(w *world) {
       func() string {
         return strconv.Itoa(int(subtype.livingCount))
       },
-      sdl.Color{subtype.red, subtype.blue, subtype.green, 255},
+      sdl.Color{subtype.red, subtype.green, subtype.blue, 255},
     )
 
     addUiElement(
@@ -155,7 +156,7 @@ func addSubtypeUi(w *world) {
       func() string {
         return strconv.Itoa(int(subtype.killCount))
       },
-      sdl.Color{subtype.red, subtype.blue, subtype.green, 255},
+      sdl.Color{subtype.red, subtype.green, subtype.blue, 255},
     )
 
     addUiElement(
@@ -164,7 +165,7 @@ func addSubtypeUi(w *world) {
       func() string {
         return strconv.Itoa(int(subtype.killedCount))
       },
-      sdl.Color{subtype.red, subtype.blue, subtype.green, 255},
+      sdl.Color{subtype.red, subtype.green, subtype.blue, 255},
     )
 
     addUiElement(
@@ -173,7 +174,7 @@ func addSubtypeUi(w *world) {
       func() string {
         return strconv.Itoa(int(subtype.starvedCount))
       },
-      sdl.Color{subtype.red, subtype.blue, subtype.green, 255},
+      sdl.Color{subtype.red, subtype.green, subtype.blue, 255},
     )
 
     addUiElement(
@@ -182,7 +183,7 @@ func addSubtypeUi(w *world) {
       func() string {
         return strconv.Itoa(int(subtype.oldAgeCount))
       },
-      sdl.Color{subtype.red, subtype.blue, subtype.green, 255},
+      sdl.Color{subtype.red, subtype.green, subtype.blue, 255},
     )
   }
 
