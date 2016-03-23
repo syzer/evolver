@@ -431,6 +431,10 @@ func (w *world) draw(pos pos, size pos) {
         w.renderer.SetDrawColor(0, 0, 255, 255)
       }
       w.renderer.DrawPoint(int(a.x-pos.x), int(a.y-pos.y))
+      w.renderer.DrawPoint(int(a.x-pos.x) + 1, int(a.y-pos.y))
+      w.renderer.DrawPoint(int(a.x-pos.x) - 1, int(a.y-pos.y))
+      w.renderer.DrawPoint(int(a.x-pos.x), int(a.y-pos.y) + 1)
+      w.renderer.DrawPoint(int(a.x-pos.x), int(a.y-pos.y) - 1)
     }
   }
 
