@@ -138,7 +138,8 @@ func main() {
 }
 
 func addSubtypeUi(w *world) {
-  for i, subtype := range w.subtypes {
+  for i, s := range w.subtypes {
+    subtype := s
     addUiElement(
       pos{210 + float64(i*150), 5},
       fmt.Sprintf("%-7s", subtype.name),
