@@ -13,6 +13,7 @@ var routines int = 4
 var currentId int64 = 0
 
 type world struct {
+  subtypes         []*subtype
   sections         map[posInt]*section
   renderer         *sdl.Renderer
   height, width    int64
@@ -23,7 +24,21 @@ type world struct {
   herbivoresCount  int32
 }
 
+type subtype struct {
+  speed float64
+  red   uint8
+  green uint8
+  blue  uint8
+
+  // stats
+  livingCount  int32
+  killedCount  int32
+  starvedCount int32
+  oldAgeCount  int32
+}
+
 func createWorld(renderer *sdl.Renderer) (w world) {
+  w.createSubtypes()
   w.sections = make(map[posInt]*section)
   w.sectionsCount = 50
   w.sectionsSize = 50
@@ -77,11 +92,11 @@ func (w *world) addRandomAnimal() {
   secPos := posInt{int32(math.Floor(x / float64(w.sectionsSize))), int32(math.Floor(y / float64(w.sectionsSize)))}
   section := w.sections[secPos]
   a := animal{
-    pos:           pos{x: x, y: y},
-    section:       section,
-    id:            currentId,
-    food:          300,
-    subtype:       rand.Int31n(5),
+    pos:     pos{x: x, y: y},
+    section: section,
+    id:      currentId,
+    food:    300,
+    subtype: w.subtypes[rand.Int31n(int32(len(w.subtypes)))],
   }
   currentId++
   section.animals[&a] = struct{}{}
@@ -89,11 +104,11 @@ func (w *world) addRandomAnimal() {
 
 func (w *world) birth(a *animal) {
   child := animal{
-    pos:           pos{x: a.x, y: a.y},
-    section:       a.section,
-    id:            currentId,
-    subtype:       a.subtype,
-    food:          200,
+    pos:     pos{x: a.x, y: a.y},
+    section: a.section,
+    id:      currentId,
+    subtype: a.subtype,
+    food:    200,
   }
   currentId++
   a.section.animals[&child] = struct{}{}
@@ -123,13 +138,13 @@ type plant struct {
 
 type animal struct {
   pos
-  section       *section
-  dead          bool
-  birth         bool
-  id            int64
-  food          int32
-  age           int32
-  subtype       int32
+  subtype *subtype
+  section *section
+  dead    bool
+  birth   bool
+  id      int64
+  food    int32
+  age     int32
   // decisions
   dMove     *pos
   dEatPlant *plant
@@ -404,14 +419,12 @@ func (w *world) draw(pos pos, size pos) {
     }
 
     for a := range section.animals {
-      subtypeColor := uint8(255 - (a.subtype * 50 + 20))
-      subtypeColor2 := uint8(a.subtype * 50 + 20)
-      w.renderer.SetDrawColor(subtypeColor, 0, subtypeColor2, 255)
+      w.renderer.SetDrawColor(a.subtype.red, a.subtype.green, a.subtype.blue, 255)
       w.renderer.DrawPoint(int(a.x-pos.x), int(a.y-pos.y))
-      w.renderer.DrawPoint(int(a.x-pos.x) + 1, int(a.y-pos.y))
-      w.renderer.DrawPoint(int(a.x-pos.x) - 1, int(a.y-pos.y))
-      w.renderer.DrawPoint(int(a.x-pos.x), int(a.y-pos.y) + 1)
-      w.renderer.DrawPoint(int(a.x-pos.x), int(a.y-pos.y) - 1)
+      w.renderer.DrawPoint(int(a.x-pos.x)+1, int(a.y-pos.y))
+      w.renderer.DrawPoint(int(a.x-pos.x)-1, int(a.y-pos.y))
+      w.renderer.DrawPoint(int(a.x-pos.x), int(a.y-pos.y)+1)
+      w.renderer.DrawPoint(int(a.x-pos.x), int(a.y-pos.y)-1)
     }
   }
 
@@ -441,4 +454,44 @@ func (w *world) draw(pos pos, size pos) {
 
 func (p1 *pos) distance(p2 *pos) float64 {
   return math.Sqrt((p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y))
+}
+
+func (w *world) createSubtypes() {
+  w.subtypes = make([]*subtype, 6)
+  w.subtypes[0] = &subtype{
+    speed: 1,
+    red:   255,
+    green: 0,
+    blue:  0,
+  }
+  w.subtypes[1] = &subtype{
+    speed: 1,
+    red:   0,
+    green: 0,
+    blue:  255,
+  }
+  w.subtypes[2] = &subtype{
+    speed: 1,
+    red:   255,
+    green: 255,
+    blue:  0,
+  }
+  w.subtypes[3] = &subtype{
+    speed: 1,
+    red:   255,
+    green: 0,
+    blue:  255,
+  }
+  w.subtypes[4] = &subtype{
+    speed: 1,
+    red:   0,
+    green: 255,
+    blue:  255,
+  }
+  w.subtypes[5] = &subtype{
+    speed: 1,
+    red:   40,
+    green: 80,
+    blue:  160,
+  }
 }

@@ -155,12 +155,12 @@ func handleKey(code sdl.Keycode, w *world) {
   switch code {
   case sdl.K_ESCAPE:
     running = false
-  case sdl.K_PLUS, sdl.K_EQUALS:
+  case sdl.K_PLUS, sdl.K_EQUALS, sdl.K_KP_PLUS:
     if desiredFps < 60 {
       desiredFps++
       fpsDesiredElement.value = strconv.FormatInt(desiredFps, 10)
     }
-  case sdl.K_MINUS:
+  case sdl.K_MINUS, sdl.K_KP_MINUS:
     if desiredFps > 1 {
       desiredFps--
       fpsDesiredElement.value = strconv.FormatInt(desiredFps, 10)
