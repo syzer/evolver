@@ -80,17 +80,11 @@ func (w *world) addRandomAnimal() {
     pos:           pos{x: x, y: y},
     section:       section,
     id:            currentId,
-    isCarnivourus: rand.Int31n(2) == 0,
     food:          300,
     subtype:       rand.Int31n(5),
   }
   currentId++
   section.animals[&a] = struct{}{}
-  if a.isCarnivourus {
-    w.carnivouresCount++
-  } else {
-    w.herbivoresCount++
-  }
 }
 
 func (w *world) birth(a *animal) {
@@ -98,17 +92,11 @@ func (w *world) birth(a *animal) {
     pos:           pos{x: a.x, y: a.y},
     section:       a.section,
     id:            currentId,
-    isCarnivourus: a.isCarnivourus,
     subtype:       a.subtype,
     food:          200,
   }
   currentId++
   a.section.animals[&child] = struct{}{}
-  if a.isCarnivourus {
-    w.carnivouresCount++
-  } else {
-    w.herbivoresCount++
-  }
 }
 
 type section struct {
@@ -136,7 +124,6 @@ type plant struct {
 type animal struct {
   pos
   section       *section
-  isCarnivourus bool
   dead          bool
   birth         bool
   id            int64
@@ -225,11 +212,6 @@ func (w *world) mapModifyPhase() {
       if a.dead {
         delete(a.section.animals, a)
         a.section = nil
-        if a.isCarnivourus {
-          w.carnivouresCount--
-        } else {
-          w.herbivoresCount--
-        }
       } else {
         secPos := posInt{int32(math.Floor(a.x / float64(w.sectionsSize))), int32(math.Floor(a.y / float64(w.sectionsSize)))}
         if secPos != a.section.posInt {
@@ -316,41 +298,36 @@ func (w *world) animalAi(a *animal) {
     speed = speedBase
   }
 
-  if a.isCarnivourus {
-    speed *= 1.5
-    var closestVictim *animal = nil
-    var victimDist = sightRange * 1.5
-    for i := a.section.x - 1; i <= a.section.x+1; i++ {
-      for j := a.section.y - 1; j <= a.section.y+1; j++ {
-        s := w.sections[posInt{i, j}]
-        if s != nil {
-          for victim := range s.animals {
-            if (!victim.isCarnivourus || victim.subtype != a.subtype) && victim.distance(&a.pos) <= victimDist {
-              victimDist = victim.distance(&a.pos)
-              closestVictim = victim
-            }
+  var closestVictim *animal = nil
+  var victimDist = sightRange * 1.5
+  for i := a.section.x - 1; i <= a.section.x+1; i++ {
+    for j := a.section.y - 1; j <= a.section.y+1; j++ {
+      s := w.sections[posInt{i, j}]
+      if s != nil {
+        for victim := range s.animals {
+          if victim.subtype != a.subtype && victim.distance(&a.pos) <= victimDist {
+            victimDist = victim.distance(&a.pos)
+            closestVictim = victim
           }
         }
       }
-
     }
 
-    if closestVictim != nil {
-      a.wandering = nil
-      var xChange, yChange float64
-      if speed >= victimDist {
-        xChange = (closestVictim.x - a.x)
-        yChange = (closestVictim.y - a.y)
-        a.dAttack = closestVictim
-      } else {
-        xChange = (closestVictim.x - a.x) * (speed / victimDist)
-        yChange = (closestVictim.y - a.y) * (speed / victimDist)
-      }
-      a.dMove = &pos{xChange, yChange}
+  }
 
+  if closestVictim != nil {
+    a.wandering = nil
+    var xChange, yChange float64
+    if speed >= victimDist {
+      xChange = (closestVictim.x - a.x)
+      yChange = (closestVictim.y - a.y)
+      a.dAttack = closestVictim
     } else {
-      w.wander(a, speed)
+      xChange = (closestVictim.x - a.x) * (speed / victimDist)
+      yChange = (closestVictim.y - a.y) * (speed / victimDist)
     }
+    a.dMove = &pos{xChange, yChange}
+
   } else {
     var closestPlant *plant = nil
     var plantDist = sightRange
@@ -387,7 +364,6 @@ func (w *world) animalAi(a *animal) {
       w.wander(a, speed)
     }
   }
-
 }
 
 func (w *world) wander(a *animal, speed float64) {
@@ -428,13 +404,9 @@ func (w *world) draw(pos pos, size pos) {
     }
 
     for a := range section.animals {
-      subtypeColor := uint8(255 - (a.subtype * 30))
-      subtypeColor2 := uint8(a.subtype * 50)
-      if a.isCarnivourus {
-        w.renderer.SetDrawColor(subtypeColor, subtypeColor2, 0, 255)
-      } else {
-        w.renderer.SetDrawColor(0, subtypeColor2, subtypeColor, 255)
-      }
+      subtypeColor := uint8(255 - (a.subtype * 50 + 20))
+      subtypeColor2 := uint8(a.subtype * 50 + 20)
+      w.renderer.SetDrawColor(subtypeColor, 0, subtypeColor2, 255)
       w.renderer.DrawPoint(int(a.x-pos.x), int(a.y-pos.y))
       w.renderer.DrawPoint(int(a.x-pos.x) + 1, int(a.y-pos.y))
       w.renderer.DrawPoint(int(a.x-pos.x) - 1, int(a.y-pos.y))
