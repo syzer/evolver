@@ -13,12 +13,13 @@ var elements map[*uiElement]struct{} = make(map[*uiElement]struct{})
 type uiElement struct {
   pos
   text  string
-  value string
+  fn    func() string
+  color sdl.Color
 }
 
 func drawUI(renderer *sdl.Renderer) {
   for k := range elements {
-    surface, _ := ubuntuR.RenderUTF8_Solid(k.text+": "+k.value, sdl.Color{255, 255, 0, 255})
+    surface, _ := ubuntuR.RenderUTF8_Solid(k.text+": "+k.fn(), k.color)
 
     txt, err2 := renderer.CreateTextureFromSurface(surface)
     if err2 != nil {
@@ -32,8 +33,14 @@ func drawUI(renderer *sdl.Renderer) {
   }
 }
 
-func addUiElement(pos pos, text string) *uiElement {
-  element := &uiElement{pos, text, "-"}
+func addWhiteUiElement(pos pos, text string, fn func() string) *uiElement {
+  element := &uiElement{pos, text, fn, sdl.Color{255, 255, 255, 255}}
+  elements[element] = struct{}{}
+  return element
+}
+
+func addUiElement(pos pos, text string, fn func() string, color sdl.Color) *uiElement {
+  element := &uiElement{pos, text, fn, color}
   elements[element] = struct{}{}
   return element
 }

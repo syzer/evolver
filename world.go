@@ -25,6 +25,7 @@ type world struct {
 }
 
 type subtype struct {
+  name  string
   speed float64
   red   uint8
   green uint8
@@ -32,6 +33,7 @@ type subtype struct {
 
   // stats
   livingCount  int32
+  killCount    int32
   killedCount  int32
   starvedCount int32
   oldAgeCount  int32
@@ -98,6 +100,7 @@ func (w *world) addRandomAnimal() {
     food:    300,
     subtype: w.subtypes[rand.Int31n(int32(len(w.subtypes)))],
   }
+  a.subtype.livingCount++
   currentId++
   section.animals[&a] = struct{}{}
 }
@@ -111,6 +114,7 @@ func (w *world) birth(a *animal) {
     food:    200,
   }
   currentId++
+  a.subtype.livingCount++
   a.section.animals[&child] = struct{}{}
 }
 
@@ -190,6 +194,8 @@ func (w *world) executionPhase() {
       }
       if a.dAttack != nil && !a.dAttack.dead {
         a.dAttack.dead = true
+        a.dAttack.subtype.killedCount++
+        a.subtype.killCount++
         a.food += 1500
       }
       a.age++
@@ -199,11 +205,17 @@ func (w *world) executionPhase() {
       } else {
         a.birth = false
       }
-      if a.food == 0 || (a.age > 4000 && rand.Int31n(3000) == 0) {
+      if a.food == 0 {
         a.dead = true
-      } else {
-        a.food--
+        a.subtype.starvedCount++
+        continue
       }
+      if a.age > 4000 && rand.Int31n(3000) == 0 {
+        a.subtype.oldAgeCount++
+        a.dead = true
+        continue
+      }
+      a.food--
     }
   }
 
@@ -225,6 +237,7 @@ func (w *world) mapModifyPhase() {
 
     for a := range section.animals {
       if a.dead {
+        a.subtype.livingCount--
         delete(a.section.animals, a)
         a.section = nil
       } else {
@@ -459,36 +472,42 @@ func (p1 *pos) distance(p2 *pos) float64 {
 func (w *world) createSubtypes() {
   w.subtypes = make([]*subtype, 6)
   w.subtypes[0] = &subtype{
+    name:  "Red",
     speed: 1,
     red:   255,
     green: 0,
     blue:  0,
   }
   w.subtypes[1] = &subtype{
+    name:  "Blue",
     speed: 1,
     red:   0,
     green: 0,
     blue:  255,
   }
   w.subtypes[2] = &subtype{
+    name:  "Yellow",
     speed: 1,
     red:   255,
     green: 255,
     blue:  0,
   }
   w.subtypes[3] = &subtype{
+    name:  "Teal",
     speed: 1,
     red:   255,
     green: 0,
     blue:  255,
   }
   w.subtypes[4] = &subtype{
+    name:  "Brown",
     speed: 1,
     red:   0,
     green: 255,
     blue:  255,
   }
   w.subtypes[5] = &subtype{
+    name:  "Purple",
     speed: 1,
     red:   40,
     green: 80,
