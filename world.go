@@ -44,7 +44,7 @@ func createWorld(renderer *sdl.Renderer) (w world) {
     w.addRandomPlant()
   }
 
-  for i := 0; i < 100; i++ {
+  for i := 0; i < 200; i++ {
     w.addRandomAnimal()
   }
 
@@ -82,6 +82,7 @@ func (w *world) addRandomAnimal() {
     id:            currentId,
     isCarnivourus: rand.Int31n(2) == 0,
     food:          300,
+    subtype:       rand.Int31n(5),
   }
   currentId++
   section.animals[&a] = struct{}{}
@@ -98,6 +99,7 @@ func (w *world) birth(a *animal) {
     section:       a.section,
     id:            currentId,
     isCarnivourus: a.isCarnivourus,
+    subtype:       a.subtype,
     food:          200,
   }
   currentId++
@@ -140,6 +142,7 @@ type animal struct {
   id            int64
   food          int32
   age           int32
+  subtype       int32
   // decisions
   dMove     *pos
   dEatPlant *plant
@@ -322,7 +325,7 @@ func (w *world) animalAi(a *animal) {
         s := w.sections[posInt{i, j}]
         if s != nil {
           for victim := range s.animals {
-            if !victim.isCarnivourus && victim.distance(&a.pos) <= victimDist {
+            if (!victim.isCarnivourus || victim.subtype != a.subtype) && victim.distance(&a.pos) <= victimDist {
               victimDist = victim.distance(&a.pos)
               closestVictim = victim
             }
@@ -425,10 +428,12 @@ func (w *world) draw(pos pos, size pos) {
     }
 
     for a := range section.animals {
+      subtypeColor := uint8(255 - (a.subtype * 30))
+      subtypeColor2 := uint8(a.subtype * 50)
       if a.isCarnivourus {
-        w.renderer.SetDrawColor(255, 0, 0, 255)
+        w.renderer.SetDrawColor(subtypeColor, subtypeColor2, 0, 255)
       } else {
-        w.renderer.SetDrawColor(0, 0, 255, 255)
+        w.renderer.SetDrawColor(0, subtypeColor2, subtypeColor, 255)
       }
       w.renderer.DrawPoint(int(a.x-pos.x), int(a.y-pos.y))
       w.renderer.DrawPoint(int(a.x-pos.x) + 1, int(a.y-pos.y))
