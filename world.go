@@ -298,8 +298,8 @@ func (w *world) makeDecision(num int, wg *sync.WaitGroup) {
           }
 
         }
-
-        if plantsCount < 150 && rand.Int31n(plantsCount*plantsCount/10+1) == 0 {
+        tropicality := p.section.y + 20
+        if plantsCount-tropicality < 80 && rand.Int31n(10*plantsCount*plantsCount/(10+tropicality)+1) == 0 {
           p.birth = true
         }
       }
