@@ -104,6 +104,9 @@ func (w *world) addRandomAnimal() {
     subtype: w.subtypes[rand.Int31n(int32(len(w.subtypes)))],
   }
   a.hp = a.subtype.hp
+  a.red = a.subtype.red
+  a.green = a.subtype.green
+  a.blue = a.subtype.blue
   a.subtype.livingCount++
   currentId++
   section.animals[&a] = struct{}{}
@@ -117,6 +120,9 @@ func (w *world) birth(a *animal) {
     subtype: a.subtype,
     hp:      a.subtype.hp,
     food:    200,
+    red:     a.red,
+    green:   a.green,
+    blue:    a.blue,
   }
   currentId++
   a.subtype.livingCount++
@@ -161,6 +167,11 @@ type animal struct {
   dAttack   *animal
   // ai
   wandering *pos
+
+  // fenotype
+  red uint8
+  green uint8
+  blue uint8
 }
 
 func (w *world) makeTurn() {
@@ -204,7 +215,7 @@ func (w *world) executionPhase() {
           a.dAttack.dead = true
           a.dAttack.subtype.killedCount++
           a.subtype.killCount++
-          a.food += 1500
+          a.food += 500
         } else {
           a.dAttack.hp -= damage
         }
@@ -315,7 +326,6 @@ func (w *world) makeDecision(num int, wg *sync.WaitGroup) {
 }
 
 var sightRange float64 = 24
-var speedBase float64 = 1
 
 func (w *world) animalAi(a *animal) {
   // watch out, is there some food around?
@@ -330,11 +340,11 @@ func (w *world) animalAi(a *animal) {
 
   var speed float64
   if a.age < 500 {
-    speed = 0.75 * speedBase
+    speed = 0.75 * a.subtype.speed
   } else if a.age > 4000 {
-    speed = 0.5 * speedBase
+    speed = 0.5 * a.subtype.speed
   } else {
-    speed = speedBase
+    speed = a.subtype.speed
   }
 
   var closestVictim *animal = nil
@@ -344,7 +354,7 @@ func (w *world) animalAi(a *animal) {
       s := w.sections[posInt{i, j}]
       if s != nil {
         for victim := range s.animals {
-          if victim.subtype != a.subtype && victim.distance(&a.pos) <= victimDist {
+          if !a.isAlly(victim) && victim.distance(&a.pos) <= victimDist {
             victimDist = victim.distance(&a.pos)
             closestVictim = victim
           }
@@ -443,7 +453,7 @@ func (w *world) draw(pos pos, size pos) {
     }
 
     for a := range section.animals {
-      w.renderer.SetDrawColor(a.subtype.red, a.subtype.green, a.subtype.blue, 255)
+      w.renderer.SetDrawColor(a.red, a.green, a.blue, 255)
       w.renderer.DrawPoint(int(a.x-pos.x), int(a.y-pos.y))
       w.renderer.DrawPoint(int(a.x-pos.x)+1, int(a.y-pos.y))
       w.renderer.DrawPoint(int(a.x-pos.x)-1, int(a.y-pos.y))
@@ -452,28 +462,6 @@ func (w *world) draw(pos pos, size pos) {
     }
   }
 
-  // renderer.SetDrawColor(0, 0, 255, 255)
-  // renderer.DrawLine(0, 0, 200, 200)
-
-  // points := []sdl.Point{{0, 0}, {100, 300}, {100, 300}, {200, 0}}
-  // m.renderer.SetDrawColor(255, 255, 0, 255)
-  // m.renderer.DrawPoints(points)
-
-  // rect = sdl.Rect{300, 0, 200, 200}
-  // renderer.SetDrawColor(255, 0, 0, 255)
-  // renderer.DrawRect(&rect)
-
-  // rects = []sdl.Rect{{400, 400, 100, 100}, {550, 350, 200, 200}}
-  // renderer.SetDrawColor(0, 255, 255, 255)
-  // renderer.DrawRects(rects)
-
-  // rect = sdl.Rect{250, 250, 200, 200}
-  // renderer.SetDrawColor(0, 255, 0, 255)
-  // renderer.FillRect(&rect)
-
-  // rects = []sdl.Rect{{500, 300, 100, 100}, {200, 300, 200, 200}}
-  // renderer.SetDrawColor(255, 0, 255, 255)
-  // renderer.FillRects(rects)
 }
 
 func (p1 *pos) distance(p2 *pos) float64 {
@@ -488,7 +476,7 @@ func (w *world) createSubtypes() {
     red:      255,
     green:    0,
     blue:     0,
-    strength: 10,
+    strength: 12,
     hp:       100,
   }
   w.subtypes[1] = &subtype{
@@ -497,12 +485,12 @@ func (w *world) createSubtypes() {
     red:      0,
     green:    0,
     blue:     255,
-    strength: 10,
+    strength: 12,
     hp:       100,
   }
   w.subtypes[2] = &subtype{
     name:     "Yellow",
-    speed:    1,
+    speed:    1.2,
     red:      255,
     green:    255,
     blue:     0,
@@ -511,7 +499,7 @@ func (w *world) createSubtypes() {
   }
   w.subtypes[3] = &subtype{
     name:     "Purple",
-    speed:    1,
+    speed:    1.2,
     red:      255,
     green:    0,
     blue:     255,
@@ -525,7 +513,7 @@ func (w *world) createSubtypes() {
     green:    255,
     blue:     255,
     strength: 10,
-    hp:       100,
+    hp:       120,
   }
   w.subtypes[5] = &subtype{
     name:     "Silver",
@@ -534,6 +522,33 @@ func (w *world) createSubtypes() {
     green:    220,
     blue:     220,
     strength: 10,
-    hp:       100,
+    hp:       120,
   }
+}
+
+
+// Returns true if target is his friend
+func (a* animal) isAlly(target *animal) bool {
+  return a.subtype == target.subtype
+}
+
+func (w *world) animalAi2(a *animal) {
+
+  // Gather inputs
+  // List of animals and plants, segregated by input.
+  // Resolution of the eye - maximal resolution of 60
+  // Inputs are provided as a list <0,60).
+  // Inputs can be nothing, friend, foe, plant
+  // That gives a total of 240 inputs (pretty heavy)
+  // Each of them gives also an information about distance. (? should it?)
+  // There is an extra input (I'm attacked - 1 bit)
+  // Also there is a memory of additional 120 inputs / outputs - connected
+  // Can attack - input
+
+  // Actions are:
+  // Attack - (closest foe in a radius gets attacked). It costs some energy though.
+  // Move - forward, backwards. (speed?)
+  // Rotate - <0, 1) - <left, right)
+  // Eat plant - (closes)
+
 }
