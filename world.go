@@ -172,6 +172,7 @@ type animal struct {
   red uint8
   green uint8
   blue uint8
+  gen gen
 }
 
 func (w *world) makeTurn() {
