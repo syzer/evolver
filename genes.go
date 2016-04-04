@@ -1,10 +1,5 @@
 package main
 
-import  (
-    "fmt"
-)
- 
-
 type fenotype struct {
     red uint8
     green uint8
@@ -18,7 +13,7 @@ type genotype struct {
 
 type gen struct {
     name string
-    apply func(genotype, fenotype) fenotype    
+    apply func(genotype, fenotype) fenotype
 }
 
 var genes []gen
