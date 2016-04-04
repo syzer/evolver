@@ -23,8 +23,6 @@ var ubuntuR, ubuntuB *ttf.Font
 var fpsElement *uiElement
 var fpsDesiredElement *uiElement
 var turnElement *uiElement
-var herbivouresElement *uiElement
-var carnivouresElement *uiElement
 var windowSize pos
 
 func init() {
@@ -45,15 +43,6 @@ func init() {
     fmt.Fprintf(os.Stderr, "Failed to open bold font: %s\n", err)
     os.Exit(1)
   }
-
-  fpsElement = addUiElement(pos{5, 5}, "Current FPS")
-  fpsDesiredElement = addUiElement(pos{5, 25}, "Desired FPS")
-  fpsDesiredElement.value = strconv.FormatInt(desiredFps, 10)
-
-  turnElement = addUiElement(pos{5, 45}, "Turn number")
-
-  carnivouresElement = addUiElement(pos{5, 65}, "Carnivoures")
-  herbivouresElement = addUiElement(pos{5, 85}, "Herbivoures")
 }
 
 func main() {
@@ -80,8 +69,23 @@ func main() {
   }
 
   framesCounter := 0
+  currentFramesCounter := 0
 
   w := createWorld(renderer)
+
+  fpsElement = addWhiteUiElement(pos{5, 5}, "Current FPS", func() string {
+    return strconv.Itoa(currentFramesCounter)
+  })
+
+  fpsDesiredElement = addWhiteUiElement(pos{5, 25}, "Desired FPS", func() string {
+    return strconv.Itoa(int(desiredFps))
+  })
+
+  turnElement = addWhiteUiElement(pos{5, 45}, "Turn number", func() string {
+    return strconv.Itoa(int(w.turnNumber))
+  })
+
+  addSubtypeUi(&w)
   last := time.Now()
 
   for running {
@@ -92,22 +96,17 @@ func main() {
       framesCounter++
       if time.Now().Unix() != last.Unix() {
         // Update fps counter.
-        fpsElement.value = strconv.Itoa(framesCounter)
+        currentFramesCounter = framesCounter
         framesCounter = 0
       }
       last = time.Now()
       w.makeTurn()
       w.makeTurn()
 
-      // w.makeTurn()
-      // w.makeTurn()
-      turnElement.value = strconv.FormatInt(int64(w.turnNumber), 10)
-      herbivouresElement.value = strconv.FormatInt(int64(w.herbivoresCount), 10)
-      carnivouresElement.value = strconv.FormatInt(int64(w.carnivouresCount), 10)
       refresh(renderer, &w)
 
     }
-    time.Sleep(time.Millisecond * 10)
+    time.Sleep(time.Millisecond * 9) // should be 10, but it is mroe accurate with 10
 
     for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
       switch t := event.(type) {
@@ -139,6 +138,57 @@ func main() {
   ttf.Quit()
 }
 
+func addSubtypeUi(w *world) {
+  for i, s := range w.subtypes {
+    subtype := s
+    addUiElement(
+      pos{210 + float64(i*150), 5},
+      fmt.Sprintf("%-7s", subtype.name),
+      func() string {
+        return strconv.Itoa(int(subtype.livingCount))
+      },
+      sdl.Color{subtype.red, subtype.green, subtype.blue, 255},
+    )
+
+    addUiElement(
+      pos{210 + float64(i*150), 25},
+      "Kills  ",
+      func() string {
+        return strconv.Itoa(int(subtype.killCount))
+      },
+      sdl.Color{subtype.red, subtype.green, subtype.blue, 255},
+    )
+
+    addUiElement(
+      pos{210 + float64(i*150), 45},
+      "Deaths ",
+      func() string {
+        return strconv.Itoa(int(subtype.killedCount))
+      },
+      sdl.Color{subtype.red, subtype.green, subtype.blue, 255},
+    )
+
+    addUiElement(
+      pos{210 + float64(i*150), 65},
+      "Starved",
+      func() string {
+        return strconv.Itoa(int(subtype.starvedCount))
+      },
+      sdl.Color{subtype.red, subtype.green, subtype.blue, 255},
+    )
+
+    addUiElement(
+      pos{210 + float64(i*150), 85},
+      "Old Age",
+      func() string {
+        return strconv.Itoa(int(subtype.oldAgeCount))
+      },
+      sdl.Color{subtype.red, subtype.green, subtype.blue, 255},
+    )
+  }
+
+}
+
 func refresh(renderer *sdl.Renderer, w *world) {
   // renderer.SetDrawColor(0, 0, uint8(frameId%255), 255)
   renderer.SetDrawColor(0, 0, 0, 255)
@@ -155,15 +205,13 @@ func handleKey(code sdl.Keycode, w *world) {
   switch code {
   case sdl.K_ESCAPE:
     running = false
-  case sdl.K_PLUS, sdl.K_EQUALS:
+  case sdl.K_PLUS, sdl.K_EQUALS, sdl.K_KP_PLUS:
     if desiredFps < 60 {
       desiredFps++
-      fpsDesiredElement.value = strconv.FormatInt(desiredFps, 10)
     }
-  case sdl.K_MINUS:
+  case sdl.K_MINUS, sdl.K_KP_MINUS:
     if desiredFps > 1 {
       desiredFps--
-      fpsDesiredElement.value = strconv.FormatInt(desiredFps, 10)
     }
 
   case sdl.K_LEFT:
