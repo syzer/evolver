@@ -91,7 +91,7 @@ func main() {
   for running {
 
     since := time.Since(last)
-    if since > time.Millisecond*time.Duration(1000/desiredFps) {
+    if since > time.Millisecond * time.Duration(1000 / desiredFps) {
       // fmt.Println("Refreshing", last)
       framesCounter++
       if time.Now().Unix() != last.Unix() {
@@ -142,7 +142,7 @@ func addSubtypeUi(w *world) {
   for i, s := range w.subtypes {
     subtype := s
     addUiElement(
-      pos{210 + float64(i*150), 5},
+      pos{210 + float64(i * 150), 5},
       fmt.Sprintf("%-7s", subtype.name),
       func() string {
         return strconv.Itoa(int(subtype.livingCount))
@@ -151,7 +151,7 @@ func addSubtypeUi(w *world) {
     )
 
     addUiElement(
-      pos{210 + float64(i*150), 25},
+      pos{210 + float64(i * 150), 25},
       "Kills  ",
       func() string {
         return strconv.Itoa(int(subtype.killCount))
@@ -160,7 +160,7 @@ func addSubtypeUi(w *world) {
     )
 
     addUiElement(
-      pos{210 + float64(i*150), 45},
+      pos{210 + float64(i * 150), 45},
       "Deaths ",
       func() string {
         return strconv.Itoa(int(subtype.killedCount))
@@ -169,7 +169,7 @@ func addSubtypeUi(w *world) {
     )
 
     addUiElement(
-      pos{210 + float64(i*150), 65},
+      pos{210 + float64(i * 150), 65},
       "Starved",
       func() string {
         return strconv.Itoa(int(subtype.starvedCount))
@@ -178,7 +178,7 @@ func addSubtypeUi(w *world) {
     )
 
     addUiElement(
-      pos{210 + float64(i*150), 85},
+      pos{210 + float64(i * 150), 85},
       "Old Age",
       func() string {
         return strconv.Itoa(int(subtype.oldAgeCount))
@@ -221,7 +221,7 @@ func handleKey(code sdl.Keycode, w *world) {
     }
   case sdl.K_RIGHT:
     screenPos.x += 25
-    if screenPos.x > float64(w.width)-windowSize.x {
+    if screenPos.x > float64(w.width) - windowSize.x {
       screenPos.x = float64(w.width) - windowSize.x
     }
 
@@ -233,7 +233,7 @@ func handleKey(code sdl.Keycode, w *world) {
 
   case sdl.K_DOWN:
     screenPos.y += 50
-    if screenPos.y > float64(w.height)-windowSize.y {
+    if screenPos.y > float64(w.height) - windowSize.y {
       screenPos.y = float64(w.height) - windowSize.y
     }
   }
